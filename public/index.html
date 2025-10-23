@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Alarm Analyzer - Test UI</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #1b1b1b; }
+      .container { max-width: 720px; margin: 0 auto; }
+      textarea { width: 100%; min-height: 120px; padding: 12px; font-size: 14px; }
+      button { padding: 10px 16px; font-size: 14px; cursor: pointer; }
+      .row { display: flex; gap: 12px; align-items: center; }
+      .result { margin-top: 16px; padding: 12px; background: #f6f8fa; border-radius: 8px; border: 1px solid #e1e4e8; }
+      .muted { color: #6a737d; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="container"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script>
+      const { useState } = React;
+
+      function App() {
+        const [message, setMessage] = useState("");
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [result, setResult] = useState({ alarm_level: "First Alarm", reason: "Default suggestion" });
+
+        async function analyze() {
+          setError("");
+          setLoading(true);
+          try {
+            const resp = await fetch("/analyze-message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              const msg = [data?.error, data?.details].filter(Boolean).join(" - ") || "Request failed";
+              setError(msg);
+              console.error("Analyze error:", data);
+              return;
+            }
+            setResult(data);
+          } catch (e) {
+            setError(e.message || String(e));
+          } finally {
+            setLoading(false);
+          }
+        }
+
+        return (
+          React.createElement('div', null,
+            React.createElement('h2', null, 'AI Alarm Analyzer - Test UI'),
+            React.createElement('p', { className: 'muted' }, 'Type a message, click Analyze to get a suggested alarm level.'),
+            React.createElement('textarea', {
+              placeholder: 'Describe the incident... e.g., Reports of 5 houses affected on Oak Street',
+              value: message,
+              onChange: (e) => setMessage(e.target.value)
+            }),
+            React.createElement('div', { className: 'row', style: { marginTop: 12 } },
+              React.createElement('button', { onClick: analyze, disabled: loading || !message.trim() }, loading ? 'Analyzing…' : 'Analyze'),
+              React.createElement('span', { className: 'muted' }, 'Default alarm if empty: First Alarm')
+            ),
+            error && React.createElement('div', { className: 'result', style: { borderColor: '#e5534b', background: '#fff5f5' } }, error),
+            result && React.createElement('div', { className: 'result' },
+              React.createElement('div', null, React.createElement('strong', null, 'Alarm Level: '), result.alarm_level || 'First Alarm'),
+              React.createElement('div', { className: 'muted', style: { marginTop: 6 } }, result.reason || 'Default suggestion')
+            )
+          )
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    </script>
+  </body>
+  </html>
+
+
